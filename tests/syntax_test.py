@@ -61,6 +61,21 @@ def test_parser_should_accept_where_with_comparison_operators(sql: str) -> None:
     parse_ok(sql)
 
 
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT Nome FROM Cliente WHERE (idCliente = 10)",
+        "SELECT Nome FROM Produto WHERE (Preco > 100)",
+        "SELECT Nome FROM Produto WHERE (Preco < 100)",
+        "SELECT Nome FROM Produto WHERE (Preco <= 100)",
+        "SELECT Nome FROM Produto WHERE (Preco >= 100)",
+        "SELECT Nome FROM Cliente WHERE (Email <> 'X')",
+    ],
+)
+def test_parser_should_accept_where_with_parentheses(sql: str) -> None:
+    parse_ok(sql)
+
+
 def test_parser_should_accept_where_with_and_and_parentheses() -> None:
     parse_ok(
         "SELECT Nome FROM Cliente WHERE (idCliente >= 1 AND TipoCliente_idTipoCliente = 2)"
@@ -73,3 +88,17 @@ def test_parser_should_accept_join_on() -> None:
         "SELECT Cliente.Nome, Pedido.idPedido FROM Cliente "
         "JOIN Pedido ON Cliente.idCliente = Pedido.Cliente_idCliente"
     )
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT Nome FROM Cliente WHERE (idCliente = 10",
+        "SELECT Nome FROM Produto WHERE Preco > 100)",
+        "SELECT Nome FROM Produto WHERE (Preco <= )",
+        "SELECT Nome FROM Cliente WHERE ()",
+        "SELECT Cliente.Nome FROM Cliente JOIN Pedido ON (Cliente.idCliente = Pedido.Cliente_idCliente",
+    ],
+)
+def test_parser_should_reject_invalid_parentheses(sql: str) -> None:
+    parse_error(sql)

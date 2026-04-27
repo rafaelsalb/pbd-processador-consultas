@@ -1,6 +1,8 @@
 from abstract_syntax_tree import Final, Identifier, JoinStatement, LogicalOperator, SelectStatement
 from lexical import TokenizedQuery
 
+from logs import logger
+
 
 class SyntacticAnalyzer:
     def __init__(self, tokens: TokenizedQuery):
@@ -58,18 +60,27 @@ class SyntacticAnalyzer:
         return self._select_statement()
 
     def _select_statement(self):
+        logger.debug("Parsing SELECT statement")
         self.consume('KEYWORD', "Expected 'SELECT' at the beginning of the query", expected_value='SELECT')
         columns: list[Identifier] = self._column_list()
+        logger.debug(f"Parsed columns: {[col for col in columns]}")
         if not self.is_at_end() and self._peek().type == 'KEYWORD' and self._peek().value == 'FROM':
+            logger.debug("Parsing FROM clause")
             self.consume('KEYWORD', "Expected 'FROM' after column list", expected_value='FROM')
             table: Identifier = self.consume('ID', "Expected table name after 'FROM'")
             joins: list[JoinStatement] = []
             where: LogicalOperator | None = None
             if not self.is_at_end() and self._peek().type == 'KEYWORD' and self._peek().value == 'JOIN':
+                logger.debug("Parsing JOIN clause(s)")
                 joins: list[JoinStatement] = self._parse_joins()
+                logger.debug(f"Parsed joins: {joins}")
             if not self.is_at_end() and self._peek().type == 'KEYWORD' and self._peek().value == 'WHERE':
+                logger.debug("Parsing WHERE clause")
                 # self.consume('KEYWORD', "Expected 'WHERE'", expected_value='WHERE')
                 where = self._where_clause()
+                logger.debug(f"Parsed WHERE condition: {where}")
+        if not self.is_at_end():
+            raise SyntaxError(self._format_syntax_error("Unexpected token after end of valid query"))
         return SelectStatement(
             columns=columns,
             table=table,
