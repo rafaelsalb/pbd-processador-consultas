@@ -79,8 +79,7 @@ class SyntacticAnalyzer:
                 # self.consume('KEYWORD', "Expected 'WHERE'", expected_value='WHERE')
                 where = self._where_clause()
                 logger.debug(f"Parsed WHERE condition: {where}")
-        if not self.is_at_end():
-            raise SyntaxError(self._format_syntax_error("Unexpected token after end of valid query"))
+        self.consume('END', "Expected end of query", expected_value=';')
         return SelectStatement(
             columns=columns,
             table=table,

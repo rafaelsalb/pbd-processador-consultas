@@ -16,10 +16,10 @@ def main():
     # syn_analyzer = SyntacticAnalyzer(tokens)
     # syn_analyzer.parse()
 
-#     code = """SELECT cliente.nome, pedido.idPedido, pedido.DataPedido, pedido.ValorTotalPedido
-# FROM Cliente JOIN pedido ON cliente.idcliente = pedido.Cliente_idCliente
-# WHERE cliente.TipoCliente_idTipoCliente = 1 and pedido.ValorTotalPedido = 0;"""
-    code = "SELECT idCliente, Nome FROM Cliente WHERE idCliente >= 1 AND TipoCliente_idTipoCliente = 2"
+    code = """SELECT cliente.nome, pedido.idPedido, pedido.DataPedido, pedido.ValorTotalPedido
+FROM Cliente JOIN pedido ON cliente.idcliente = pedido.Cliente_idCliente
+WHERE cliente.TipoCliente_idTipoCliente = 1 AND pedido.ValorTotalPedido = 0;"""
+    # code = "SELECT idCliente, Nome FROM Cliente WHERE idCliente >= 1 AND TipoCliente_idTipoCliente = 2"
     parser = Parser(code)
     tree = parser.parse()
     pprint(tree)
