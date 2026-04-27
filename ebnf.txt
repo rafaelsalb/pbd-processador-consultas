@@ -1,0 +1,23 @@
+<query>        ::= "SELECT" <column_list> "FROM" <table_name> <join_list> <where_clause>
+
+<column_list>  ::= <column_name> ( "," <column_name> )* | "*"
+
+<join_list>    ::= ( "JOIN" <table_name> "ON" <condition> )*
+
+<where_clause> ::= "WHERE" <condition>
+                 | ""
+
+<condition>    ::= <term> ( "AND" <term> )*
+
+<term>         ::= "(" <condition> ")"
+                 | <comparison>
+
+<comparison>   ::= <operand> <operator> <operand>
+
+<operand>      ::= <column_name> | <string_literal> | <number_literal>
+
+<column_name>  ::= <identifier> ( "." <identifier> )?
+
+<table_name>   ::= <identifier>
+
+<operator>     ::= "=" | ">" | "<" | ">=" | "<=" | "<>"
