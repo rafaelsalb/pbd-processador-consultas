@@ -67,7 +67,8 @@ class SyntacticAnalyzer:
         if not self.is_at_end() and self._peek().type == 'KEYWORD' and self._peek().value == 'FROM':
             logger.debug("Parsing FROM clause")
             self.consume('KEYWORD', "Expected 'FROM' after column list", expected_value='FROM')
-            table: Identifier = self.consume('ID', "Expected table name after 'FROM'")
+            token = self.consume('ID', "Expected table name after 'FROM'")
+            table: Identifier = Identifier(name=token.value)
             joins: list[JoinStatement] = []
             where: LogicalOperator | None = None
             if not self.is_at_end() and self._peek().type == 'KEYWORD' and self._peek().value == 'JOIN':
@@ -88,15 +89,18 @@ class SyntacticAnalyzer:
         )
 
     def _column_list(self):
-        columns = [self.consume('ID', "Expected column name")]
+        token = self.consume('ID', "Expected column name")
+        columns = [Identifier(name=token.value)]
         while self._peek() and self._peek().type == 'COMMA':
             self._advance()  # consume the comma
-            columns.append(self.consume('ID', "Expected column name after ','"))
+            token = self.consume('ID', "Expected column name after ','")
+            columns.append(Identifier(name=token.value))
         return columns
 
     def _join_statement(self):
         self.consume('KEYWORD', "Expected 'JOIN'", expected_value='JOIN')
-        table: Identifier = self.consume('ID', "Expected table name after 'JOIN'")
+        token = self.consume('ID', "Expected table name after 'JOIN'")
+        table: Identifier = Identifier(name=token.value)
         on: LogicalOperator | None = None
         if not self.is_at_end() and self._peek().type == 'KEYWORD' and self._peek().value == 'ON':
             self.consume('KEYWORD', "Expected 'ON'", expected_value='ON')
