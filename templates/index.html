@@ -139,6 +139,7 @@
                 <label for="query">Digite sua consulta SQL</label>
                 <textarea id="query" name="query" placeholder="SELECT ..."></textarea>
                 <div class="actions">
+                    <button type="button" id="format-btn">Formatar</button>
                     <button type="submit" id="submit-btn">Executar</button>
                 </div>
                 <div class="status" id="status">Envie uma consulta para visualizar o plano.</div>
@@ -154,6 +155,7 @@
         const form = document.getElementById('query-form');
         const status = document.getElementById('status');
         const submitBtn = document.getElementById('submit-btn');
+        const formatBtn = document.getElementById('format-btn');
         const placeholder = document.getElementById('placeholder');
         const svg = d3.select('#graph');
         const legend = document.getElementById('legend');
@@ -171,6 +173,82 @@
             Join: '#b91c1c',
             TableScan: '#15803d'
         };
+
+        const sqlKeywords = new Set([
+            'select', 'from', 'where', 'join', 'on', 'and',
+        ]);
+
+        let catalogCache = null;
+
+        async function loadCatalog() {
+            if (catalogCache) return catalogCache;
+            const response = await fetch('/catalog');
+            if (!response.ok) {
+                throw new Error('Falha ao carregar o catálogo.');
+            }
+            const schema = await response.json();
+            const tableMap = new Map();
+            const columnMap = new Map();
+            const qualifiedMap = new Map();
+
+            for (const [table, columns] of Object.entries(schema)) {
+                tableMap.set(table.toLowerCase(), table);
+                for (const qualified of columns) {
+                    const parts = qualified.split('.');
+                    if (parts.length === 2) {
+                        const [tableName, columnName] = parts;
+                        columnMap.set(columnName.toLowerCase(), columnName);
+                        qualifiedMap.set(`${tableName.toLowerCase()}.${columnName.toLowerCase()}`, qualified);
+                    }
+                }
+            }
+
+            catalogCache = { tableMap, columnMap, qualifiedMap };
+            return catalogCache;
+        }
+
+        function titleCaseIdentifier(word) {
+            return word
+                .split('_')
+                .map(part => part ? part[0].toUpperCase() + part.slice(1).toLowerCase() : part)
+                .join('_');
+        }
+
+        function resolveIdentifier(word, catalog) {
+            if (!catalog) return titleCaseIdentifier(word);
+            const lower = word.toLowerCase();
+            if (catalog.tableMap.has(lower)) {
+                return catalog.tableMap.get(lower);
+            }
+            if (catalog.columnMap.has(lower)) {
+                return catalog.columnMap.get(lower);
+            }
+            return titleCaseIdentifier(word);
+        }
+
+        function formatQuery(query, catalog) {
+            if (!query) return '';
+            const tokens = query.match(/\s+|"[^"]*"|'[^']*'|`[^`]*`|\b\w+\b|\S/g) || [];
+            return tokens.map((token) => {
+                if (/^\s+$/.test(token)) {
+                    return token;
+                }
+                if (/^"[^"]*"$|^'[^']*'$|^`[^`]*`$/.test(token)) {
+                    return token;
+                }
+                if (/^\w+$/.test(token)) {
+                    const lower = token.toLowerCase();
+                    if (sqlKeywords.has(lower)) {
+                        return lower.toUpperCase();
+                    }
+                    if (/^\d+$/.test(token)) {
+                        return token;
+                    }
+                    return resolveIdentifier(token, catalog);
+                }
+                return token;
+            }).join('');
+        }
 
         function buildTree(plan) {
             if (!plan) return null;
@@ -422,6 +500,19 @@
                 status.textContent = 'Erro ao executar a consulta.';
                 submitBtn.disabled = false;
             });
+        });
+
+        formatBtn.addEventListener('click', async function() {
+            const queryEl = document.getElementById('query');
+            try {
+                status.textContent = 'Formatando consulta...';
+                const catalog = await loadCatalog();
+                queryEl.value = formatQuery(queryEl.value, catalog);
+                status.textContent = 'Consulta formatada.';
+            } catch (error) {
+                console.error('Error:', error);
+                status.textContent = 'Não foi possível formatar a consulta.';
+            }
         });
 
         window.addEventListener('resize', () => {
