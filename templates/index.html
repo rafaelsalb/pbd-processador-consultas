@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processador de consultas</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f7f9fc;
+            --card: #ffffff;
+            --text: #1a1f36;
+            --muted: #6b7280;
+            --primary: #2563eb;
+            --primary-soft: #dbeafe;
+            --border: #e5e7eb;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: "Inter", system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 32px;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        h1 {
+            margin: 0 0 16px;
+            font-size: 28px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 20px rgba(17, 24, 39, 0.05);
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 160px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            padding: 12px;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 12px;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        #graph-container {
+            height: 70vh;
+            min-height: 520px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #graph {
+            width: 100%;
+            height: 100%;
+        }
+
+        .placeholder {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            font-size: 14px;
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+        }
+
+        .legend {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .legend span {
+            background: var(--primary-soft);
+            color: #1d4ed8;
+            padding: 4px 8px;
+            border-radius: 999px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Processador de consultas</h1>
+    <div class="layout">
+        <div class="card">
+            <form action="/execute" method="post" id="query-form">
+                <label for="query">Digite sua consulta SQL</label>
+                <textarea id="query" name="query" placeholder="SELECT ..."></textarea>
+                <div class="actions">
+                    <button type="submit" id="submit-btn">Executar</button>
+                </div>
+                <div class="status" id="status">Envie uma consulta para visualizar o plano.</div>
+            </form>
+        </div>
+        <div class="card" id="graph-container">
+            <div class="placeholder" id="placeholder">O grafo aparecerá aqui.</div>
+            <svg id="graph"></svg>
+            <div class="legend" id="legend"></div>
+        </div>
+    </div>
+    <script>
+        const form = document.getElementById('query-form');
+        const status = document.getElementById('status');
+        const submitBtn = document.getElementById('submit-btn');
+        const placeholder = document.getElementById('placeholder');
+        const svg = d3.select('#graph');
+        const legend = document.getElementById('legend');
+
+        const nodeColors = {
+            Projection: '#dbeafe',
+            Selection: '#ede9fe',
+            Join: '#fee2e2',
+            TableScan: '#dcfce7'
+        };
+
+        const nodeBorders = {
+            Projection: '#1d4ed8',
+            Selection: '#6d28d9',
+            Join: '#b91c1c',
+            TableScan: '#15803d'
+        };
+
+        function buildTree(plan) {
+            if (!plan) return null;
+            const node = { ...plan };
+            const children = [];
+            if (node.child) {
+                children.push(buildTree(node.child));
+            }
+            if (node.left_node) {
+                children.push(buildTree(node.left_node));
+            }
+            if (node.right_node) {
+                children.push(buildTree(node.right_node));
+            }
+            node.children = children.filter(Boolean);
+            return node;
+        }
+
+        const measureContext = document.createElement('canvas').getContext('2d');
+        const titleFont = '700 14px Inter, system-ui, -apple-system, sans-serif';
+        const bodyFont = '400 12px Inter, system-ui, -apple-system, sans-serif';
+
+        function formatLabelLines(node) {
+            if (node.type === 'Projection') {
+                const cols = Array.isArray(node.columns) ? node.columns : [String(node.columns)];
+                const bulletLines = cols.map(col => `• ${col}`);
+                return { title: 'Projection', lines: bulletLines };
+            }
+            if (node.type === 'Selection') {
+                return { title: 'Seleção', lines: [`Condição: ${conditionToText(node.condition)}`] };
+            }
+            if (node.type === 'Join') {
+                return { title: 'Junção', lines: [`Condição: ${conditionToText(node.condition)}`] };
+            }
+            return { title: 'TableScan', lines: [`table=${node.table_name}`] };
+        }
+
+        function conditionToText(condition) {
+            if (!condition) return '';
+            if (typeof condition === 'string') return condition;
+            if (condition.type === 'Identifier') return condition.name;
+            if (condition.type === 'Final') return String(condition.value);
+            if (condition.type === 'LogicalOperator') {
+                const left = conditionToText(condition.left);
+                const right = conditionToText(condition.right);
+                return `${left} ${condition.operator} ${right}`.trim();
+            }
+            return String(condition.value ?? condition);
+        }
+
+        function textWidth(text, font) {
+            measureContext.font = font;
+            return measureContext.measureText(text).width;
+        }
+
+        function wrapLine(text, font, maxWidth) {
+            if (!text) return [''];
+            const words = text.split(/\s+/);
+            const lines = [];
+            let line = '';
+
+            for (const word of words) {
+                const test = line ? `${line} ${word}` : word;
+                if (textWidth(test, font) <= maxWidth) {
+                    line = test;
+                    continue;
+                }
+
+                if (line) {
+                    lines.push(line);
+                }
+
+                if (textWidth(word, font) <= maxWidth) {
+                    line = word;
+                } else {
+                    let chunk = '';
+                    for (const char of word) {
+                        const next = chunk + char;
+                        if (textWidth(next, font) <= maxWidth) {
+                            chunk = next;
+                        } else {
+                            if (chunk) lines.push(chunk);
+                            chunk = char;
+                        }
+                    }
+                    line = chunk;
+                }
+            }
+
+            if (line) lines.push(line);
+            return lines;
+        }
+
+        function renderLegend() {
+            legend.innerHTML = '';
+            Object.keys(nodeColors).forEach((type) => {
+                const chip = document.createElement('span');
+                chip.textContent = type;
+                chip.style.background = nodeColors[type];
+                chip.style.color = nodeBorders[type];
+                legend.appendChild(chip);
+            });
+        }
+
+        let lastPlan = null;
+
+        function renderGraph(plan) {
+            const treeData = buildTree(plan);
+            if (!treeData) {
+                placeholder.style.display = 'flex';
+                svg.selectAll('*').remove();
+                legend.innerHTML = '';
+                lastPlan = null;
+                return;
+            }
+
+            lastPlan = treeData;
+
+            placeholder.style.display = 'none';
+            svg.selectAll('*').remove();
+            renderLegend();
+
+            const container = document.getElementById('graph-container');
+            const width = container.clientWidth - 40;
+            const height = container.clientHeight - 40;
+            svg.attr('width', width).attr('height', height);
+
+            const root = d3.hierarchy(treeData);
+            const treeLayout = d3.tree()
+                .nodeSize([220, 200])
+                .separation((a, b) => (a.parent === b.parent ? 1.4 : 1.8));
+            treeLayout(root);
+
+            const g = svg
+                .append('g')
+                .attr('transform', `translate(${width / 2}, 40)`);
+
+            const zoom = d3.zoom().scaleExtent([0.5, 2]).on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            });
+            svg.call(zoom);
+
+            g.selectAll('path.link')
+                .data(root.links())
+                .join('path')
+                .attr('class', 'link')
+                .attr('fill', 'none')
+                .attr('stroke', '#94a3b8')
+                .attr('stroke-width', 2)
+                .attr('d', d3.linkVertical()
+                    .x(d => d.x)
+                    .y(d => d.y)
+                );
+
+            const node = g.selectAll('g.node')
+                .data(root.descendants())
+                .join('g')
+                .attr('class', 'node')
+                .attr('transform', d => `translate(${d.x}, ${d.y})`);
+
+            node.append('rect')
+                .attr('rx', 12)
+                .attr('fill', d => nodeColors[d.data.type] || '#e2e8f0')
+                .attr('stroke', d => nodeBorders[d.data.type] || '#64748b')
+                .attr('stroke-width', 2)
+                .attr('filter', 'drop-shadow(0 6px 12px rgba(15, 23, 42, 0.08))');
+
+            const textGroup = node.append('text')
+                .attr('x', 0)
+                .attr('text-anchor', 'start')
+                .attr('fill', '#0f172a');
+
+            node.each(function (d) {
+                const group = d3.select(this);
+                const textEl = group.select('text');
+                const rect = group.select('rect');
+
+                const { title, lines: detailSource } = formatLabelLines(d.data);
+                const maxTextWidth = 220;
+                const wrappedDetails = detailSource.flatMap(line => wrapLine(line, bodyFont, maxTextWidth));
+                const lines = [
+                    { text: title, font: titleFont, size: 14, weight: 700 },
+                    ...wrappedDetails.map(line => ({ text: line, font: bodyFont, size: 12, weight: 400 }))
+                ];
+
+                textEl.selectAll('tspan').remove();
+
+                const lineHeights = lines.map(line => line.size * 1.35);
+                const totalHeight = lineHeights.reduce((sum, h) => sum + h, 0);
+                const startY = -totalHeight / 2 + lineHeights[0] / 2;
+
+                let currentY = startY;
+                let maxWidth = 0;
+
+                const textX = 0;
+                lines.forEach((line, index) => {
+                    const tspan = textEl.append('tspan')
+                        .attr('x', textX)
+                        .attr('y', currentY)
+                        .attr('font-size', line.size)
+                        .attr('font-weight', line.weight)
+                        .text(line.text);
+                    const width = textWidth(line.text, line.font);
+                    maxWidth = Math.max(maxWidth, width);
+                    currentY += lineHeights[index];
+                });
+
+                const paddingX = 24;
+                const paddingY = 18;
+                const rectWidth = Math.max(220, maxWidth + paddingX * 2);
+                const rectHeight = Math.max(80, totalHeight + paddingY * 2);
+
+                rect
+                    .attr('x', -rectWidth / 2)
+                    .attr('y', -rectHeight / 2)
+                    .attr('width', rectWidth)
+                    .attr('height', rectHeight);
+                const leftX = -rectWidth / 2 + paddingX;
+                textEl.attr('x', leftX);
+                textEl.selectAll('tspan').attr('x', leftX);
+            });
+        }
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const query = document.getElementById('query').value;
+            status.textContent = 'Executando consulta...';
+            submitBtn.disabled = true;
+            fetch('/execute', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query })
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                if (data.error) {
+                    status.textContent = `Erro: ${data.error}`;
+                    renderGraph(null);
+                    return;
+                }
+                status.textContent = 'Plano de execução renderizado.';
+                renderGraph(data.execution_plan);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                status.textContent = 'Erro ao executar a consulta.';
+                submitBtn.disabled = false;
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            if (lastPlan) {
+                renderGraph(lastPlan);
+            }
+        });
+    </script>
+</body>
+</html>

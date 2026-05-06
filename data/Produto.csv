@@ -1,0 +1,5 @@
+idProduto,Nome,Descricao,Preco,QuantEstoque,Categoria_idCategoria
+1,Notebook,Notebook 14 polegadas,3500.0,15,1
+2,Smartphone,Smartphone 128GB,1800.0,30,1
+3,Livro SQL,Guia de SQL,90.0,50,2
+4,Liquidificador,Liquidificador 900W,220.0,20,3

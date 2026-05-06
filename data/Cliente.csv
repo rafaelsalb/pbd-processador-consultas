@@ -1,0 +1,4 @@
+idCliente,Nome,Email,Nascimento,Senha,TipoCliente_idTipoCliente,DataRegistro
+1,Ana Souza,ana.souza@example.com,1990-05-12,senha123,1,2024-01-15
+2,Carlos Lima,carlos.lima@example.com,1985-10-30,senha456,2,2024-02-10
+3,Beatriz Melo,beatriz.melo@example.com,1995-07-08,senha789,1,2024-03-05

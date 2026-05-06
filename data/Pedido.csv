@@ -1,0 +1,4 @@
+idPedido,Status_idStatus,DataPedido,ValorTotalPedido,Cliente_idCliente
+1001,2,2024-04-01,3590.0,1
+1002,3,2024-04-03,2020.0,2
+1003,1,2024-04-05,220.0,3
