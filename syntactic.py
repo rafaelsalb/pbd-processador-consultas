@@ -60,26 +60,26 @@ class SyntacticAnalyzer:
         return self._select_statement()
 
     def _select_statement(self):
-        logger.debug("Parsing SELECT statement")
+        print("Parsing SELECT statement")
         self.consume('KEYWORD', "Expected 'SELECT' at the beginning of the query", expected_value='SELECT')
         columns: list[Identifier] = self._column_list()
-        logger.debug(f"Parsed columns: {[col for col in columns]}")
+        print(f"Parsed columns: {[col for col in columns]}")
         if not self.is_at_end() and self._peek().type == 'KEYWORD' and self._peek().value == 'FROM':
-            logger.debug("Parsing FROM clause")
+            print("Parsing FROM clause")
             self.consume('KEYWORD', "Expected 'FROM' after column list", expected_value='FROM')
             token = self.consume('ID', "Expected table name after 'FROM'")
             table: Identifier = Identifier(name=token.value)
             joins: list[JoinStatement] = []
             where: LogicalOperator | None = None
             if not self.is_at_end() and self._peek().type == 'KEYWORD' and self._peek().value == 'JOIN':
-                logger.debug("Parsing JOIN clause(s)")
+                print("Parsing JOIN clause(s)")
                 joins: list[JoinStatement] = self._parse_joins()
-                logger.debug(f"Parsed joins: {joins}")
+                print(f"Parsed joins: {joins}")
             if not self.is_at_end() and self._peek().type == 'KEYWORD' and self._peek().value == 'WHERE':
-                logger.debug("Parsing WHERE clause")
+                print("Parsing WHERE clause")
                 # self.consume('KEYWORD', "Expected 'WHERE'", expected_value='WHERE')
                 where = self._where_clause()
-                logger.debug(f"Parsed WHERE condition: {where}")
+                print(f"Parsed WHERE condition: {where}")
         self.consume('END', "Expected end of query", expected_value=';')
         return SelectStatement(
             columns=columns,

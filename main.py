@@ -1,6 +1,5 @@
-from pprint import pprint
-
 from execution_graph import ExecutionGraph
+from optimizer import TreeOptimizer
 from parser import Parser
 from relational import ExecutionPlan
 from semantic_analyzer import SemanticAnalyzer
@@ -24,8 +23,14 @@ WHERE Cliente.TipoCliente_idTipoCliente = 1 AND Pedido.ValorTotalPedido = 0;"""
     print("Plano de Execução:")
     # pprint(plan)
     # graph = ExecutionGraph.from_plan(plan)
-    print("\n" * 2)
-    print(ExecutionGraph().jsonify(plan)) # visualize(plan)
+    optimizer = TreeOptimizer(plan)
+    optimized_plan = optimizer.optimize(plan)
+    print("\nPlano de Execução Otimizado:")
+    for i, node in enumerate(breadth_first_traversal(optimized_plan)):
+        print(f"Node {i}: {node}")
+
+    # print("\n" * 2)
+    # print(ExecutionGraph().jsonify(plan)) # visualize(plan)
 
 if __name__ == "__main__":
     main()

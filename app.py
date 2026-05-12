@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, render_template
 
 from catalog import Catalog
 from execution_graph import ExecutionGraph
+from optimizer import TreeOptimizer
 from parser import Parser
 from relational import ExecutionPlan
 from semantic_analyzer import SemanticAnalyzer
@@ -24,10 +25,13 @@ def execute_query():
         semantic_analyzer.analyze(tree)
         planner = ExecutionPlan()
         plan = planner.build(tree)
-        execution_plan = ExecutionGraph().jsonify(plan)
+        unoptimized_plan = ExecutionGraph().jsonify(plan)
+        optimizer = TreeOptimizer()
+        optimized_plan = optimizer.optimize(plan)
+        execution_plan = ExecutionGraph().jsonify(optimized_plan)
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-    return jsonify({"query": query, "execution_plan": execution_plan})
+    return jsonify({"query": query, "execution_plan": execution_plan, "unoptimized_plan": unoptimized_plan})
 
 @app.get("/catalog")
 def get_catalog():
