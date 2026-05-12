@@ -22,9 +22,12 @@ class SemanticAnalyzer:
             raise ValueError(f"Table {statement.table.name} does not exist in the catalog.")
         self.context.push_to_scope(statement.table.name)
 
-        # for column in statement.columns:
-        #     if column.value not in self.context.catalog.schema[statement.table.value]:
-        #         raise ValueError(f"Column {column.value} does not exist in table {statement.table.value}.")
+        for column in statement.columns:
+            parts = column.name.split('.')
+            if len(parts) == 2:
+                table_name, column_name = parts
+                if not self.context.catalog.has_column(table_name, column_name):
+                    raise ValueError(f"Column {column_name} does not exist in table {table_name}.")
 
         if statement.joins:
             for join in statement.joins:

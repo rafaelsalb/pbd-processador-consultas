@@ -16,4 +16,6 @@ class Parser:
         tokens = self.lexical_analyzer.analyze()
         print(f"Lexical analysis produced tokens: {tokens}")
         self.syntactic_analyzer = SyntacticAnalyzer(tokens)
-        return self.syntactic_analyzer.parse()
+        result = self.syntactic_analyzer.parse()
+        print(f"===\n\nSyntactic Analysis result: {result}")
+        return result

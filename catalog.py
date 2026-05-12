@@ -87,6 +87,7 @@ class Catalog:
         return name in self.schema
 
     def has_column(self, table: str, column: str) -> bool:
+        print(f"Checking if column {column} exists in table {table}...")
         return self.has_table(table) and column in self.schema[table]
 
     def get_column_type(self, table: str, column: str):

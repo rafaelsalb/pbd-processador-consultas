@@ -92,6 +92,43 @@
             color: var(--muted);
         }
 
+        .steps-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 13px;
+        }
+
+        .steps-table th,
+        .steps-table td {
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .steps-table th {
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .steps-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #ecfdf3;
+            color: #15803d;
+        }
+
+        .steps-empty {
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 12px;
+        }
+
         #graph-container {
             height: 70vh;
             min-height: 520px;
@@ -179,6 +216,19 @@
                     <button type="submit" id="submit-btn">Executar</button>
                 </div>
                 <div class="status" id="status">Envie uma consulta para visualizar o plano.</div>
+                <table class="steps-table" id="steps-table" aria-live="polite">
+                    <thead>
+                        <tr>
+                            <th>Etapa</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="steps-body">
+                        <tr>
+                            <td colspan="2" class="steps-empty">Nenhuma execução ainda.</td>
+                        </tr>
+                    </tbody>
+                </table>
             </form>
         </div>
         <div class="card" id="graph-container">
@@ -207,6 +257,7 @@
         const tabOptimized = document.getElementById('tab-optimized');
         const panelUnoptimized = document.getElementById('panel-unoptimized');
         const panelOptimized = document.getElementById('panel-optimized');
+        const stepsBody = document.getElementById('steps-body');
 
         const placeholderUnoptimized = document.getElementById('placeholder-unoptimized');
         const placeholderOptimized = document.getElementById('placeholder-optimized');
@@ -414,6 +465,27 @@
             active: 'unoptimized'
         };
 
+        function renderSteps(steps) {
+            stepsBody.innerHTML = '';
+            if (!steps || steps.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="2" class="steps-empty">Nenhuma execução ainda.</td>';
+                stepsBody.appendChild(row);
+                return;
+            }
+
+            steps.forEach((step, index) => {
+                const row = document.createElement('tr');
+                const stepCell = document.createElement('td');
+                stepCell.textContent = `${index + 1}. ${step}`;
+                const statusCell = document.createElement('td');
+                statusCell.innerHTML = '<span class="steps-badge">Concluído</span>';
+                row.appendChild(stepCell);
+                row.appendChild(statusCell);
+                stepsBody.appendChild(row);
+            });
+        }
+
         function renderGraph(plan, config) {
             const treeData = buildTree(plan);
             if (!treeData) {
@@ -578,6 +650,7 @@
                 submitBtn.disabled = false;
                 if (data.error) {
                     status.textContent = `Erro: ${data.error}`;
+                    renderSteps(data.steps);
                     graphState.unoptimized = null;
                     graphState.optimized = null;
                     renderGraph(null, {
@@ -595,6 +668,7 @@
                     return;
                 }
                 status.textContent = 'Plano de execução renderizado.';
+                renderSteps(data.steps);
                 graphState.unoptimized = data.unoptimized_plan || null;
                 graphState.optimized = data.execution_plan || null;
                 renderGraph(graphState.unoptimized, {
