@@ -29,14 +29,36 @@ def execute_query():
         planner = ExecutionPlan()
         plan = planner.build(tree)
         ok_steps.append("Conversão para Álgebra Relacional")
-        unoptimized_plan = ExecutionGraph().jsonify(plan)
+        graph = ExecutionGraph()
+        unoptimized_plan = graph.jsonify(plan)
+        unoptimized_sequence = [
+            {
+                "current": graph.jsonify(current),
+                "next": graph.jsonify(next_node) if next_node else None,
+            }
+            for current, next_node in planner.execution_sequence(plan)
+        ]
         optimizer = TreeOptimizer()
         optimized_plan = optimizer.optimize(plan)
         ok_steps.append("Otimização")
-        execution_plan = ExecutionGraph().jsonify(optimized_plan)
+        execution_plan = graph.jsonify(optimized_plan)
+        optimized_sequence = [
+            {
+                "current": graph.jsonify(current),
+                "next": graph.jsonify(next_node) if next_node else None,
+            }
+            for current, next_node in planner.execution_sequence(optimized_plan)
+        ]
     except Exception as e:
         return jsonify({"error": str(e), "steps": ok_steps}), 400
-    return jsonify({"query": query, "execution_plan": execution_plan, "unoptimized_plan": unoptimized_plan, "steps": ok_steps})
+    return jsonify({
+        "query": query,
+        "execution_plan": execution_plan,
+        "unoptimized_plan": unoptimized_plan,
+        "optimized_sequence": optimized_sequence,
+        "unoptimized_sequence": unoptimized_sequence,
+        "steps": ok_steps,
+    })
 
 @app.get("/catalog")
 def get_catalog():

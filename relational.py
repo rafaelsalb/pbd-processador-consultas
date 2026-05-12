@@ -60,3 +60,28 @@ class ExecutionPlan:
             current_node = Selection(child=current_node, condition=ast_node.where)
         col_names = [col.name for col in ast_node.columns]
         return Projection(child=current_node, columns=col_names)
+
+    def execution_order(self, plan: PlanNode) -> list[PlanNode]:
+        # pós-ordem: primeiro os filhos, depois o nó atual
+        order: list[PlanNode] = []
+
+        def visit(node: PlanNode) -> None:
+            if isinstance(node, Projection):
+                visit(node.child)
+            elif isinstance(node, Selection):
+                visit(node.child)
+            elif isinstance(node, JoinOp):
+                visit(node.left_node)
+                visit(node.right_node)
+            order.append(node)
+
+        visit(plan)
+        return order
+
+    def execution_sequence(self, plan: PlanNode) -> list[tuple[PlanNode, PlanNode | None]]:
+        order = self.execution_order(plan)
+        sequence: list[tuple[PlanNode, PlanNode | None]] = []
+        for index, node in enumerate(order):
+            next_node = order[index + 1] if index + 1 < len(order) else None
+            sequence.append((node, next_node))
+        return sequence
