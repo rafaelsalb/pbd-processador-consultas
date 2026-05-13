@@ -61,8 +61,11 @@ class SemanticAnalyzer:
             self._analyze_logical_operator(operator.right)
 
     def _is_valid_identifier(self, identifier: Identifier) -> bool:
-        for table in self.context.scope:
-            parts = identifier.name.split('.')
-            if len(parts) == 2 and parts[0] == table and self.context.catalog.has_column(table, parts[1]):
-                return True
+        parts = identifier.name.split('.')
+        if len(parts) == 2:
+            table_name, column_name = parts
+            for table in self.context.scope:
+                if table == table_name and self.context.catalog.has_column(table, column_name):
+                    return True
+            return False
         return False

@@ -51,7 +51,7 @@ class LexicalAnalyzer:
         ]
         tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in token_specification)
 
-        for mo in re.finditer(tok_regex, expression):
+        for mo in re.finditer(tok_regex, expression, re.IGNORECASE):
             # print(mo.groups())
             kind = mo.lastgroup
             value = mo.group(0)
@@ -59,6 +59,8 @@ class LexicalAnalyzer:
             # print(mo, kind, value)
             if kind == 'NUMBER':
                 value = float(value) if '.' in value else int(value)
+            elif kind == 'KEYWORD':
+                value = value.upper()
             elif kind == 'SKIP':
                 continue
             elif kind == 'MISMATCH':
