@@ -7,6 +7,8 @@ class PlanNode:
     def __hash__(self):
         return id(self)
 
+    # essa implementação do hash era para quando eu pretendia usar
+    # o networkx para representar o plano de execução, mas desisti
     def __post_init__(cls):
         cls.__hash__ = PlanNode.__hash__
 
@@ -44,6 +46,12 @@ class JoinOp(PlanNode):
 
 
 class ExecutionPlan:
+    """
+    aqui é onde ocorre a conversão da árvore de sintaxe abstrata
+    construída pelo analisador sintático para um plano de execução, que é uma
+    representação da consulta em álgebra relacional
+    """
+
     def build(self, ast_node: SelectStatement) -> PlanNode:
         current_node = TableScan(ast_node.table.name)
 
@@ -79,6 +87,8 @@ class ExecutionPlan:
         return order
 
     def execution_sequence(self, plan: PlanNode) -> list[tuple[PlanNode, PlanNode | None]]:
+        # a diferença entre essa função e a anterior é que essa retorna
+        # uma sequência de pares (nó atual, próximo nó), no fim isso foi desnecessário.
         order = self.execution_order(plan)
         sequence: list[tuple[PlanNode, PlanNode | None]] = []
         for index, node in enumerate(order):

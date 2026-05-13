@@ -212,7 +212,8 @@ class ProjectionRule:
 class TreeOptimizer:
     def optimize(self, node: PlanNode) -> PlanNode:
         """
-        Recursively walks the execution graph and applies optimization rules.
+        recursivamente otimiza a árvore de plano de execução aplicando as regras de
+        redução de tuplas e de colunas
         """
         if isinstance(node, Selection):
             optimized = SelectionRule.apply(node)

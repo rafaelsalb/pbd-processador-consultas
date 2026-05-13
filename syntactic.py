@@ -1,3 +1,9 @@
+# algumas fontes que usei:
+# https://www.elementsofcomputerscience.com/posts/lexical-analyzer-for-sql-01/
+# https://craftinginterpreters.com/parsing-expressions.html
+# a implementação final foi baseada na sintaxe encontrada em ebnf.txt, mas
+# não é exatamente aquilo, e tem algumas limitações (ex: não suporta subqueries)
+
 from abstract_syntax_tree import Final, Identifier, JoinStatement, LogicalOperator, SelectStatement
 from lexical import TokenizedQuery
 
@@ -5,6 +11,11 @@ from logs import logger
 
 
 class SyntacticAnalyzer:
+    """
+    A ideia por trás desse analizador é que cada método representa uma
+    regra de produção na gramática.
+    """
+
     def __init__(self, tokens: TokenizedQuery):
         self.tokens: TokenizedQuery = tokens
         self.current: int = 0
@@ -32,6 +43,8 @@ class SyntacticAnalyzer:
         )
 
     def _peek(self):
+        # retorna o token atual, sem consumí-lo. é útil para
+        # checar o seu tipo ou valor antes de decidir o que fazer
         if self.current < len(self.tokens.tokens):
             return self.tokens.tokens[self.current]
         return None
@@ -40,11 +53,14 @@ class SyntacticAnalyzer:
         return self._peek() is None
 
     def _advance(self):
+        # consome o token atual e avança para o próximo.
         if not self.is_at_end():
             self.current += 1
         return self.tokens.tokens[self.current - 1]
 
     def consume(self, expected_type, message, expected_value=None):
+        # consome o token atual se ele tiver o tipo e valor esperados,
+        # ou lança um erro de sintaxe
         if self._peek() and self._peek().type == expected_type:
             if expected_value is None or self._peek().value == expected_value:
                 return self._advance()

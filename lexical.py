@@ -36,6 +36,7 @@ class LexicalAnalyzer:
             f"{pointer}"
         )
 
+    # inspirado em https://docs.python.org/3/library/re.html
     def _tokenize(self, expression: str):
         token_specification = [
             ('KEYWORD',  r'\b(?:SELECT|FROM|WHERE|JOIN|ON|AND)\b'),  # Keywords

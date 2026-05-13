@@ -4,6 +4,11 @@ from context import SemanticValidationContext
 
 
 class SemanticAnalyzer:
+    """
+    os metodos dessa classe são para checar se todas as tabelas,
+    identificadores e colunas existem no catálogo
+    """
+
     def __init__(self, context: SemanticValidationContext | None = None, catalog: Catalog | None = None):
         self.context = context if context is not None else SemanticValidationContext(catalog if catalog is not None else Catalog(), [])
 
